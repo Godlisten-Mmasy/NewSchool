@@ -19,12 +19,12 @@ class MarksController extends Controller
     {
         $this->middleware('auth');
     }
-    
+
     public function show_marks(Request $request){
         $GLOBALS['search'] = $request->class;
-        
 
-        
+
+
         if(empty($request->class) || empty($request->subject)){
             if(!empty($request->class) && !empty($request->subject)){
                 $students = DB::table('students')->where(function($query){
@@ -92,7 +92,7 @@ class MarksController extends Controller
             ->join('classes','results.class_id','=','classes.class_id')
             ->where('students.student_id','=',$request->student_id)
             ->orderBy('results.updated_at','desc')->paginate(25);
-            return view('results',['subjects'=>$subjects,'classes'=>$classes,'students'=>$students,'results'=>$results]);  
+            return view('results',['subjects'=>$subjects,'classes'=>$classes,'students'=>$students,'results'=>$results]);
         }
     }
 
@@ -100,7 +100,7 @@ class MarksController extends Controller
         $subjects = DB::table('subjects')->orderBy('updated_at','desc')->paginate(1000);
         $classes = DB::table('classes')->orderBy('name','asc')->paginate(1000);
         $students = DB::table('students')->where('class','LIKE','%'.$request->get('class_id').'%')->orderBy('total_score','desc')->paginate(1000);
-       
+
         $results = DB::table('results')
         ->join('students','results.student_id','=','students.student_id')
         ->join('subjects','results.subject_id','=','subjects.subject_id')
@@ -140,22 +140,22 @@ class MarksController extends Controller
         $res[$student->student_id]->total_score = $result_query[$student->student_id];
         $res[$student->student_id]->save();
         }
-        
+
         $alerts = array();
         $alerts[0] = "";
         return view('reports',['subjects'=>$subjects,'classes'=>$classes,'students'=>$students,'results'=>$results,'alerts'=>$alerts]);
-       
+
     }
 
     public function show_marks_submit(Request $request){
-        
+
         $students = DB::table('students')->
         where('class',$request->class)->orderBy('updated_at','desc')->paginate(25);
         $classes = DB::table('classes')
         ->where('class_id',$request->class)->orderBy('updated_at','desc')->paginate(25);
         $subjects = DB::table('subjects')
         ->where('subject_id',$request->subject)->orderBy('updated_at','desc')->paginate(25);
-        
+
 
         for ($i=1; $i <= $request->student_num; $i++) {
             $resultsX = DB::table('results')
@@ -186,7 +186,7 @@ class MarksController extends Controller
             }
         }
 
-        
+
 
         $results = DB::table('results')
             ->where('class_id',$request->class)
@@ -219,7 +219,7 @@ class MarksController extends Controller
                 $value_form .= $result->name."=".$result->score."; ";
             }
             }
-            $value_form .= '        Amekuwa wa: '.$count.' Kati ya wanafunzi '.count($students).'.      ';
+            $value_form .= 'Amekuwa wa: '.$count.' Kati ya wanafunzi '.count($students).'.      ';
             //ISSA ACCOUNT
             // if($parent_phone){
             //     $response = Http::post('https://rest.nexmo.com/sms/json', [
@@ -233,15 +233,50 @@ class MarksController extends Controller
             //     ]);
             // }
             if($parent_phone){
-                $response = Http::post('https://rest.nexmo.com/sms/json', [
-                    'from'=>'Vonage APIs', 'text'=>$value_form, 'to'=>'255755206870', 'api_key'=>'397e5b86', 'api_secret'=>'ZsmzPTOiz385vc4v'
-                ]);
+//                $response = Http::post('https://rest.nexmo.com/sms/json', [
+//                    'from'=>'Vonage APIs', 'text'=>$value_form, 'to'=>'255755206870', 'api_key'=>'397e5b86', 'api_secret'=>'ZsmzPTOiz385vc4v'
+//                ]);
+                $curl = curl_init();
+
+                $headers = [
+                    "Content-Type: application/json",
+                    "Accept: application/json",
+                    "Authorization: Basic aW0yM246bWltaW1pMjNO"
+                ];
+
+                $params = [
+                    'to' => $parent_phone,
+                    'text' => $value_form,
+                    'from' => 'NEXTSMS'
+                ];
+
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => "https://messaging-service.co.tz/api/sms/v1/text/single",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 0,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => "POST",
+                    CURLOPT_POSTFIELDS => json_encode($params),
+                    CURLOPT_HTTPHEADER => $headers,
+                ));
+
+                $response = curl_exec($curl);
+                $err = curl_error($curl);
+                curl_close($curl);
+                if ($err) {
+                    logger("cURL Error #:" . $err);
+                } else {
+                     logger($response);
+                }
             }
 
         }
         return redirect()->back()->with('success','Message Sent!');
     }
-    
+
     public function exportIntoExcel(Request $request){
         return Excel::download(new ResultsExport,'Results_'.$request->get('class_name').'.xlsx');
     }
