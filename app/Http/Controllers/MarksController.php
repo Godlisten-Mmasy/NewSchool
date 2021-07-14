@@ -212,7 +212,7 @@ class MarksController extends Controller
         $count = 0;
         foreach ($students as $student) {
             $count++;
-            $parent_phone = "255".substr($student->phone,+1);
+            $parent_phone = substr_replace($student->phone, 255, 0, 0);
             $value_form = "Mzazi wa ".$student->fname." ".$student->tname.";\n";
             foreach ($results as $result) {
             if ($result->student_id==$student->student_id) {
